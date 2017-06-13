@@ -1,4 +1,8 @@
 # simHR
-Run `simulateSignal(70)` for simulating a heart rate of 70 beats per minute. 
-The signal generated will create an electrogram as seen in the right ventricle. 
-The current version of the code accepts only heart rates upto 87 beats per minute
+Modify signalGenScript to simulate a ventricular electrogram of a preferred heart rate. In sinus the simulated 
+heart rate should be kept less than 87 beats per minute.
+```
+HR = 87;
+[simSignal, AVD,VTD,TAD] = simulateSignal(min(87, HR),AWaveStruct,VWaveStruct,TWaveStruct,BaselineStruct,-1,-1,-1);
+```
+The simulated signal can be sped up or slowed down by changing the `newHR` value
