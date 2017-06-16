@@ -11,7 +11,7 @@ currentDirLength = 30;%length(dir('./Templates/VChannel/AWave/'))-2;
 startChannel = 17;
 %% Extract Data from first 5 channels
 for channel=startChannel:1:19
-extractedChannel = parentData{channel}.*5/2^16; %16bit ADC with a max of 5mV
+extractedChannel = 2*parentData{channel}.*5/2^16; %16bit ADC with a max of 5mV
 %figure, plot(extractedChannel);
 HR = ceil(60e3/97); %Heart Rate in ms - Calculated from V-V
 EGMBound = 2400;
