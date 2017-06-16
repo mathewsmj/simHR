@@ -12,18 +12,29 @@ VTDelaySinus = 360:10:420;
 % to onset of V.
 if AVDelay==-1
     AVDelay = AVDelaySinus(randIndex(length(AVDelaySinus)));
+else
+    AVDelay = max(AVDelay, AVDelaySinus(1));
+    AVDelay = min(AVDelay, AVDelaySinus(end));
 end
 % In sinus VT Delay is between 360-420ms. This is measured from onset of V
 % to termination of T.
 if VTDelay==-1
     VTDelayRand = VTDelaySinus(randIndex(length(VTDelaySinus)));
     VTDelay = VTDelayRand - str2double(VWaveStruct.wavelength) - str2double(TWaveStruct.wavelength);
+else
+    VTDelay = max(VTDelay, VTDelaySinus(1)- str2double(TWaveStruct.wavelength) - str2double(VWaveStruct.wavelength));
+    VTDelay = min(VTDelay, VTDelaySinus(end)- str2double(TWaveStruct.wavelength) - str2double(VWaveStruct.wavelength));
 end
 % TADelay depends on the heart rate. This is measured from termination of T
 % to onset of A on succeeding beat.
 if TADelay==-1
-    TADelay = beatWavelength - str2double(AWaveStruct.wavelength) - AVDelay - VTDelayRand;
+    TADelay = max(0,beatWavelength - str2double(AWaveStruct.wavelength) - AVDelay - VTDelayRand);
+else
+    TADelay = max(0,beatWavelength - str2double(AWaveStruct.wavelength) - str2double(VWaveStruct.wavelength) ...
+        - str2double(TWaveStruct.wavelength) - AVDelay - VTDelay);
 end
+
+
 
 AWave = AWaveStruct.data;
 VWave = VWaveStruct.data;
