@@ -9,6 +9,9 @@ VWaveStruct = xWaveStruct(strcat('./Templates/VChannel/VWave/VWave',randChannels
 TWaveStruct = xWaveStruct(strcat('./Templates/VChannel/TWave/TWave',randChannels(3),'.csv'));
 BaselineStruct = xWaveStruct(strcat('./Templates/VChannel/Baseline/Baseline',randChannels(4),'.csv'));
 
+AVDelaySinus = 120:10:200; 
+VTDelaySinus = 360:10:420;
+
 HR = 60;
 % -1 for the delays asks the script to choose a random sinus delay
 [simSignal, AVD,VTD,TAD] = simulateSignal(min(87, HR),AWaveStruct,VWaveStruct,TWaveStruct,BaselineStruct,-1,-1,-1);
@@ -16,14 +19,21 @@ HR = 60;
 %%
 newHR = 20;
 % Calculate change in HR in ms
-change =  ceil(60e3./HR)- ceil(60e3./newHR);
+change =  ceil(60e3./HR) - ceil(60e3./newHR);
 
 % Calculate new delays in m
 VTDchange = (-1)^(change>0)*ceil(sqrt(abs(change)));
-changeRemainder = (-1)^(change>0)*(abs(change) - abs(VTDchange));
 newVTD = VTD + VTDchange;
-newTAD = TAD + ceil(changeRemainder/2);
+newVTD = max(newVTD , abs(VTDelaySinus(1) - str2double(TWaveStruct.wavelength) - str2double(VWaveStruct.wavelength)));
+newVTD = min(abs(VTDelaySinus(end) - str2double(TWaveStruct.wavelength) - str2double(VWaveStruct.wavelength)), newVTD);
+
+changeRemainder = (-1)^(change>0)*(abs(change) - abs(newVTD-VTD));
 newAVD = AVD + floor(changeRemainder/2);
+newAVD = max(newAVD, AVDelaySinus(1));
+newAVD = min(AVDelaySinus(end), newAVD);
+
+newTAD = TAD + (-1)^(change>0)*(abs(changeRemainder) - abs(newAVD-AVD));
+
 
 % Create new signal with same components with modified delays
 [newSimSignal, AVD1,VTD1,TAD1] = simulateSignal(newHR,AWaveStruct,VWaveStruct,TWaveStruct,BaselineStruct,newAVD,newVTD,newTAD);
