@@ -22,7 +22,7 @@ function varargout = EGMSigGen(varargin)
 
 % Edit the above text to modify the response to help EGMSigGen
 
-% Last Modified by GUIDE v2.5 16-Jun-2017 17:22:24
+% Last Modified by GUIDE v2.5 19-Jun-2017 11:29:00
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -46,7 +46,7 @@ end
 
 % --- Executes just before EGMSigGen is made visible.
 function EGMSigGen_OpeningFcn(hObject, eventdata, handles, varargin)
-global generatedOutput
+global generatedBeat generatedSignal AWaveStruct VWaveStruct TWaveStruct BaselineStruct
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -62,11 +62,18 @@ handles.baselineAxes.XTickLabels = [];
 handles.AWaveAxes.XTickLabels = [];
 handles.VWaveAxes.XTickLabels = [];
 handles.TWaveAxes.XTickLabels = [];
-generatedOutput = struct();
-generatedOutput.Data = [];
-generatedOutput.AVDelay = -1;
-generatedOutput.VTDelay = -1;
-generatedOutput.TADelay = -1;
+generatedBeat = struct();
+generatedBeat.Data = [];
+generatedBeat.AVDelay = -1;
+generatedBeat.VTDelay = -1;
+generatedBeat.TADelay = -1;
+generatedSignal = [];
+AWaveStruct = struct();
+VWaveStruct = struct();
+TWaveStruct = struct();
+BaselineStruct = struct();
+handles.generateBtn.Enable = 'off';
+handles.bslngenBtn.Enable = 'off';
 % Update handles structure
 guidata(hObject, handles);
 
@@ -182,18 +189,29 @@ function resetBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to resetBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-handles.instrStack.String = {'Reset'};
+global generatedSignal
+handles.instrStack.String = {'Running Reset'};
 handles.instrStack.Value = 1;
 resetInfoHandles(handles.baselineInfo);
 resetInfoHandles(handles.AWaveInfo);
 resetInfoHandles(handles.VWaveInfo);
 resetInfoHandles(handles.TWaveInfo);
+handles.instrStack.String{end+1} = 'Reset component Information';
 cla(handles.baselineAxes);
 cla(handles.AWaveAxes);
 cla(handles.VWaveAxes);
 cla(handles.TWaveAxes);
-
-
+handles.instrStack.String{end+1} = 'Cleared component plots';
+AWaveStruct = struct();
+VWaveStruct = struct();
+TWaveStruct = struct();
+BaselineStruct = struct();
+handles.instrStack.String{end+1} = 'Cleared loaded components';
+handles.instrStack.String{end+1} = 'Reset complete!';
+generatedSignal = [];
+handles.loadBtn.Enable = 'on';
+handles.generateBtn.Enable = 'off';
+handles.bslngenBtn.Enable = 'off';
 
 
 
@@ -209,19 +227,20 @@ function generateBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to generateBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global AWaveStruct VWaveStruct TWaveStruct BaselineStruct generatedOutput
+global AWaveStruct VWaveStruct TWaveStruct BaselineStruct generatedBeat generatedSignal
 heartRate = str2double(handles.hrTxt.String);
 AVDelay = str2double(handles.avdTxt.String);
 VTDelay = str2double(handles.vtdTxt.String);
 TADelay = str2double(handles.tadTxt.String);
 [simSignal,outAVDelay,outVTDelay,outTADelay] = simulateSignal(heartRate, AWaveStruct, VWaveStruct, TWaveStruct,...
     BaselineStruct, AVDelay, VTDelay, TADelay);
-generatedOutput.Data = simSignal;
-generatedOutput.AVDelay = outAVDelay;
-generatedOutput.VTDelay = outVTDelay;
-generatedOutput.TADelay = outTADelay;
-plot(handles.signalAxes, repmat(generatedOutput.Data,str2double(handles.nbeatTxt.String),1));
-handles.signalAxes.XLim = [0 5000];
+generatedBeat.Data = simSignal;
+generatedBeat.AVDelay = outAVDelay;
+generatedBeat.VTDelay = outVTDelay;
+generatedBeat.TADelay = outTADelay;
+generatedSignal = [generatedSignal; repmat(generatedBeat.Data,str2double(handles.nbeatTxt.String),1)];
+plot(handles.signalAxes, generatedSignal);
+handles.signalAxes.XLim = [0 length(generatedSignal)];
 handles.instrStack.String{end+1} = 'Plotted Generated beat'; 
 handles.instrStack.String{end+1} = ['HR:',num2str(heartRate)];
 handles.instrStack.String{end+1} = ['AVDelay:',num2str(outAVDelay)];
@@ -284,13 +303,69 @@ function saveBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to saveBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global generatedSignal fileName
+saveDir = './saveSignals/';
 
+if (exist(saveDir,'dir') ~= 7)
+    mkdir './saveSignals/';
+end
+
+fileName = handles.saveTxt.String;
+if strcmp(fileName, 'Enter Filename')
+    fileName = 'saveSignal';
+end
+extension = '.csv';
+checkOverwrite(saveDir,extension, handles)
+filePath = [saveDir, fileName, extension];
+fId = fopen(filePath,'w');
+if fId ~= -1
+    handles.instrStack.String{end+1} = ['Saving Data to Path: ' filePath];
+    fprintf(fId,'--[HEADER]--\n%s\n',string(datetime));
+    fprintf(fId,'--[BASELINE]--\n');
+    writeCellString(fId,handles.baselineInfo.String);
+    fprintf(fId,'--[AWAVE]--\n');
+    writeCellString(fId,handles.AWaveInfo.String);
+    fprintf(fId,'--[VWAVE]--\n');
+    writeCellString(fId,handles.VWaveInfo.String);
+    fprintf(fId,'--[TWAVE]--\n');
+    writeCellString(fId,handles.TWaveInfo.String);
+    fprintf(fId,'--[DATA]--\n');
+    fprintf(fId,'%d\n',generatedSignal);
+    fprintf(fId,'--[END]--');
+end
+fclose(fId);
+
+
+% Check for file overwrite, create a copy and save to file. 
+function checkOverwrite(saveDir,extension, handles)
+global fileName
+allFiles = dir([saveDir fileName '*']);
+if (~isempty(allFiles))
+    lastFileName = allFiles(length(allFiles)).name(1:end-(length(extension)));
+    fileName = [lastFileName 'Copy'];
+end
+
+function writeCellString(fId,inputStrCell)
+for i=1:length(inputStrCell)
+    fprintf(fId, '%s\n', inputStrCell{i});
+end
 
 % --- Executes on button press in bslngenBtn.
 function bslngenBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to bslngenBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
+global BaselineStruct generatedSignal
+Baseline = BaselineStruct.data;
+mB = mean(Baseline);
+sB = sqrt(var(Baseline));
+pB = max(Baseline);
+HR = ceil(60e3/str2double(handles.hrTxt.String)); % heart rate in ms
+generatedBaseline = simulateBaseline(HR, mB, sB, pB);
+generatedSignal = [generatedSignal; repmat(generatedBaseline,str2double(handles.nbeatTxt.String),1)];
+plot(handles.signalAxes, generatedSignal);
+handles.signalAxes.XLim = [0 length(generatedSignal)];
+handles.instrStack.String{end+1} = strcat('Added ', handles.nbeatTxt.String, ' baselines.');
 
 
 
@@ -301,7 +376,6 @@ resetInfoHandles(handles.baselineInfo)
 resetInfoHandles(handles.AWaveInfo)
 resetInfoHandles(handles.VWaveInfo)
 resetInfoHandles(handles.TWaveInfo)
-
 
 ldPath = './Templates/VChannel/';
 instrStackHndl = handles.instrStack;
@@ -354,7 +428,35 @@ handles.baselineAxes.XTickLabels = [];
 handles.AWaveAxes.XTickLabels = [];
 handles.VWaveAxes.XTickLabels = [];
 handles.TWaveAxes.XTickLabels = [];
+instrStackHndl.String{end+1} = 'Enabling generate buttons';
+handles.generateBtn.Enable = 'on';
+handles.bslngenBtn.Enable = 'on';
+handles.loadBtn.Enable = 'off';
+
 
 function resetInfoHandles(infoHandle)
 infoHandle.String = cell(4,1);
 infoHandle.String = {'FileName:', 'Parent File:','Wavelength:','VMax:'};
+
+
+
+function saveTxt_Callback(hObject, eventdata, handles)
+% hObject    handle to saveTxt (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hints: get(hObject,'String') returns contents of saveTxt as text
+%        str2double(get(hObject,'String')) returns contents of saveTxt as a double
+
+
+% --- Executes during object creation, after setting all properties.
+function saveTxt_CreateFcn(hObject, eventdata, handles)
+% hObject    handle to saveTxt (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    empty - handles not created until after all CreateFcns called
+
+% Hint: edit controls usually have a white background on Windows.
+%       See ISPC and COMPUTER.
+if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
+    set(hObject,'BackgroundColor','white');
+end
