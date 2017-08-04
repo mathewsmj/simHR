@@ -5,7 +5,7 @@ function [simSignal,AVDelay,VTDelay,TADelay] = simulateSignal(heartRate, AWaveSt
 
 beatWavelength = ceil(60e3/heartRate); %in millisecond
 
-AVDelaySinus = 120:10:200; 
+AVDelaySinus = 120:10:200;
 VTDelaySinus = 360:10:420;
 
 if manualFlag
@@ -16,14 +16,14 @@ end
 % to termination of T.
 if VTDelay==-1
     VTDelayRand = VTDelaySinus(randIndex(length(VTDelaySinus)));
-    VTDelay = VTDelayRand - str2double(VWaveStruct.wavelength) -  ... 
+    VTDelay = VTDelayRand - str2double(VWaveStruct.wavelength) -  ...
         str2double(TWaveStruct.wavelength);
 else
     VTDelay = VTDelay + ((-1)^(delta<0))*ceil(sqrt(abs(delta))); %VT delay changes as sqrt(RR) interval
     delta = delta - ((-1)^(delta<0))*ceil(sqrt(abs(delta))); % Update delta
     VTDelay = max(VTDelay, VTDelaySinus(1)- str2double(TWaveStruct.wavelength) - ...
         str2double(VWaveStruct.wavelength));
-    VTDelay = min(VTDelay, VTDelaySinus(end)- str2double(TWaveStruct.wavelength) - ... 
+    VTDelay = min(VTDelay, VTDelaySinus(end)- str2double(TWaveStruct.wavelength) - ...
         str2double(VWaveStruct.wavelength));
 end
 
@@ -40,12 +40,38 @@ end
 % TADelay depends on the heart rate. This is measured from termination of T
 % to onset of A on succeeding beat.
 if TADelay==-1
-    TADelay = max(0,beatWavelength - str2double(AWaveStruct.wavelength) - ... 
-        AVDelay - VTDelayRand);
+    TADelay = beatWavelength - str2double(AWaveStruct.wavelength) - ...
+        AVDelay - VTDelayRand;
+    if (TADelay<0)
+        AVDelay = AVDelaySinus(1); % If TA Delay is negative, make AVDelay as short as possible
+        TADelay = beatWavelength - str2double(AWaveStruct.wavelength) - ...
+            AVDelay - VTDelayRand;
+        if (TADelay<0)
+            VTDelay = VTDelaySinus(1)- str2double(TWaveStruct.wavelength) - ...
+                str2double(VWaveStruct.wavelength); % If TA Delay is still negative, make VTDelay as short as possible
+            TADelay = beatWavelength - str2double(AWaveStruct.wavelength) - ...
+                AVDelay - str2double(VWaveStruct.wavelength) - str2double(TWaveStruct.wavelength) - ...
+                VTDelay;
+        end
+    end
+    
 else
-    TADelay = max(0,beatWavelength - str2double(AWaveStruct.wavelength) -  ... 
+    TADelay = beatWavelength - str2double(AWaveStruct.wavelength) -  ...
         str2double(VWaveStruct.wavelength) - str2double(TWaveStruct.wavelength) ...
-        - AVDelay - VTDelay);
+        - AVDelay - VTDelay;
+    if (TADelay<0)
+        AVDelay = AVDelaySinus(1); % If TA Delay is negative, make AVDelay as short as possible
+        TADelay = beatWavelength - str2double(AWaveStruct.wavelength) -  ...
+            str2double(VWaveStruct.wavelength) - str2double(TWaveStruct.wavelength) ...
+            - AVDelay - VTDelay;
+        if (TADelay<0)
+            VTDelay = VTDelaySinus(1)- str2double(TWaveStruct.wavelength) - ...
+                str2double(VWaveStruct.wavelength); % If TA Delay is still negative, make VTDelay as short as possible
+            TADelay = beatWavelength - str2double(AWaveStruct.wavelength) -  ...
+                str2double(VWaveStruct.wavelength) - str2double(TWaveStruct.wavelength) ...
+                - AVDelay - VTDelay;
+        end
+    end
 end
 
 
