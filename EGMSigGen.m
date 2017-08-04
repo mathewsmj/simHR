@@ -22,7 +22,7 @@ function varargout = EGMSigGen(varargin)
 
 % Edit the above text to modify the response to help EGMSigGen
 
-% Last Modified by GUIDE v2.5 19-Jun-2017 11:29:00
+% Last Modified by GUIDE v2.5 04-Aug-2017 12:27:48
 
 % Begin initialization code - DO NOT EDIT
 gui_Singleton = 1;
@@ -77,6 +77,7 @@ oldHeartRate = 72;
 handles.hrTxt.String = 72;
 handles.generateBtn.Enable = 'off';
 handles.bslngenBtn.Enable = 'off';
+handles.manualCheckBox.Enable = 'off';
 generateBtnCallCount = 0;
 % Update handles structure
 guidata(hObject, handles);
@@ -216,6 +217,8 @@ generatedSignal = [];
 handles.loadBtn.Enable = 'on';
 handles.generateBtn.Enable = 'off';
 handles.bslngenBtn.Enable = 'off';
+handles.manualCheckBox.Enable = 'off';
+handles.manualCheckBox.Value = 0;
 generateBtnCallCount = 0;
 handles.hrTxt.String = 72;
 handles.avdTxt.String = -1;
@@ -237,19 +240,27 @@ function generateBtn_Callback(hObject, eventdata, handles)
 % handles    structure with handles and user data (see GUIDATA)
 global AWaveStruct VWaveStruct TWaveStruct BaselineStruct generatedBeat...
     generatedSignal oldHeartRate generateBtnCallCount
-manualFlag = 0;
-heartRate = str2double(handles.hrTxt.String);
+manualFlag = handles.manualCheckBox.Value;
+maxHR = floor(60e3/(120+360+str2double(AWaveStruct.wavelength)));
+heartRate = min(maxHR,str2double(handles.hrTxt.String));
+
+if (str2double(handles.hrTxt.String)>maxHR)
+    handles.hrTxt.String = num2str(maxHR);
+end
+
 if (generateBtnCallCount>0)
     delta = oldHeartRate - heartRate; 
 else
     delta = 0;
 end
+
 oldHeartRate = heartRate;
 AVDelay = str2double(handles.avdTxt.String);
 VTDelay = str2double(handles.vtdTxt.String);
 TADelay = str2double(handles.tadTxt.String);
 [simSignal,outAVDelay,outVTDelay,outTADelay] = simulateSignal(heartRate, AWaveStruct, VWaveStruct, TWaveStruct,...
     BaselineStruct, AVDelay, VTDelay, TADelay, delta, manualFlag);
+
 generatedBeat.Data = simSignal;
 generatedBeat.AVDelay = outAVDelay;
 generatedBeat.VTDelay = outVTDelay;
@@ -449,6 +460,7 @@ instrStackHndl.String{end+1} = 'Enabling generate buttons';
 handles.generateBtn.Enable = 'on';
 handles.bslngenBtn.Enable = 'on';
 handles.loadBtn.Enable = 'off';
+handles.manualCheckBox.Enable = 'on';
 
 
 function resetInfoHandles(infoHandle)
@@ -477,3 +489,12 @@ function saveTxt_CreateFcn(hObject, eventdata, handles)
 if ispc && isequal(get(hObject,'BackgroundColor'), get(0,'defaultUicontrolBackgroundColor'))
     set(hObject,'BackgroundColor','white');
 end
+
+
+% --- Executes on button press in manualCheckBox.
+function manualCheckBox_Callback(hObject, eventdata, handles)
+% hObject    handle to manualCheckBox (see GCBO)
+% eventdata  reserved - to be defined in a future version of MATLAB
+% handles    structure with handles and user data (see GUIDATA)
+
+% Hint: get(hObject,'Value') returns toggle state of manualCheckBox
