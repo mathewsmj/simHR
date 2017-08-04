@@ -46,7 +46,8 @@ end
 
 % --- Executes just before EGMSigGen is made visible.
 function EGMSigGen_OpeningFcn(hObject, eventdata, handles, varargin)
-global generatedBeat generatedSignal AWaveStruct VWaveStruct TWaveStruct BaselineStruct
+global generatedBeat generatedSignal AWaveStruct VWaveStruct TWaveStruct BaselineStruct ...
+    oldHeartRate generateBtnCallCount
 % This function has no output args, see OutputFcn.
 % hObject    handle to figure
 % eventdata  reserved - to be defined in a future version of MATLAB
@@ -72,8 +73,11 @@ AWaveStruct = struct();
 VWaveStruct = struct();
 TWaveStruct = struct();
 BaselineStruct = struct();
+oldHeartRate = 72;
+handles.hrTxt.String = 72;
 handles.generateBtn.Enable = 'off';
 handles.bslngenBtn.Enable = 'off';
+generateBtnCallCount = 0;
 % Update handles structure
 guidata(hObject, handles);
 
@@ -189,7 +193,7 @@ function resetBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to resetBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global generatedSignal
+global generatedSignal generateBtnCallCount
 handles.instrStack.String = {'Running Reset'};
 handles.instrStack.Value = 1;
 resetInfoHandles(handles.baselineInfo);
@@ -212,7 +216,11 @@ generatedSignal = [];
 handles.loadBtn.Enable = 'on';
 handles.generateBtn.Enable = 'off';
 handles.bslngenBtn.Enable = 'off';
-
+generateBtnCallCount = 0;
+handles.hrTxt.String = 72;
+handles.avdTxt.String = -1;
+handles.vtdTxt.String = -1;
+handles.tadTxt.String = -1;
 
 
 % --- Executes on button press in updateBtn.
@@ -227,13 +235,21 @@ function generateBtn_Callback(hObject, eventdata, handles)
 % hObject    handle to generateBtn (see GCBO)
 % eventdata  reserved - to be defined in a future version of MATLAB
 % handles    structure with handles and user data (see GUIDATA)
-global AWaveStruct VWaveStruct TWaveStruct BaselineStruct generatedBeat generatedSignal
+global AWaveStruct VWaveStruct TWaveStruct BaselineStruct generatedBeat...
+    generatedSignal oldHeartRate generateBtnCallCount
+manualFlag = 0;
 heartRate = str2double(handles.hrTxt.String);
+if (generateBtnCallCount>0)
+    delta = oldHeartRate - heartRate; 
+else
+    delta = 0;
+end
+oldHeartRate = heartRate;
 AVDelay = str2double(handles.avdTxt.String);
 VTDelay = str2double(handles.vtdTxt.String);
 TADelay = str2double(handles.tadTxt.String);
 [simSignal,outAVDelay,outVTDelay,outTADelay] = simulateSignal(heartRate, AWaveStruct, VWaveStruct, TWaveStruct,...
-    BaselineStruct, AVDelay, VTDelay, TADelay);
+    BaselineStruct, AVDelay, VTDelay, TADelay, delta, manualFlag);
 generatedBeat.Data = simSignal;
 generatedBeat.AVDelay = outAVDelay;
 generatedBeat.VTDelay = outVTDelay;
@@ -249,6 +265,7 @@ handles.instrStack.String{end+1} = ['TADelay:',num2str(outTADelay)];
 handles.avdTxt.String = num2str(outAVDelay);
 handles.vtdTxt.String = num2str(outVTDelay);
 handles.tadTxt.String = num2str(outTADelay);
+generateBtnCallCount = 1;
 
 
 
